@@ -97,7 +97,8 @@ def _coerce_types(stan_code, stan_data):
         if k in var_names and var_dict[k]=="int":
             stan_data[k] = v.astype(int)
         if v.size==1:
-            stan_data[k] = stan_data[k][0]
+            stan_data[k], = v.ravel()
+
     return stan_data
 
 
