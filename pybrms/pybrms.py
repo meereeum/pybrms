@@ -96,7 +96,7 @@ def _coerce_types(stan_code, stan_data):
     # coerce integers to int and 1-size arrays to scalars
     for k,v in stan_data.items():
         if k in var_names and var_dict[k]=="int":
-            stan_data[k] = v.astype(int)
+            stan_data[k] = v.astype(int) # np.int32) # hmm, why did i change this ?
         if v.size==1:
             stan_data[k], = v.ravel()
 
@@ -150,6 +150,9 @@ def fit(
         with open(os.path.abspath(f'{stan_exe_file}.stan'), 'r') as f:
             model_code = f.read()
 
+        # allow model name to differ from exe name --
+        # this is essential if using same exe to sample given multiple datasets in parallel
+        # but depends on removing this check from `cmdstanpy`
         name = name if name is not None else stan_exe_file
         kwargs = {'exe_file': stan_exe_file, 'compile': False}
 
