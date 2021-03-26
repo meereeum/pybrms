@@ -109,7 +109,7 @@ def fit(
     priors: list = [],
     family: str = "gaussian",
     sample_prior: str = "no",
-    sample:bool = "yes",
+    sample: bool = True,
      **pystan_args,
 ):
     formula = brms.bf(formula)
