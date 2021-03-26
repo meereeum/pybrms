@@ -7,7 +7,8 @@ __all__ = ['get_brms_data', 'get_stan_code', 'fit']
 import typing
 import pandas as pd
 import numpy as np
-import pystan
+import cmdstanpy
+import os
 import re
 
 import rpy2.robjects.packages as rpackages
@@ -110,32 +111,54 @@ def fit(
     family: str = "gaussian",
     sample_prior: str = "no",
     sample: bool = True,
-     **pystan_args,
+    name: str = None,
+    outdir: str = ".",
+    stan_exe_file: str = None,
+    **stan_args,
 ):
-    formula = brms.bf(formula)
     data = _convert_python_to_R(data)
 
-    if len(priors)>0:
-        brms_prior = brms.prior_string(*priors[0])
-        for p in priors[1:]:
-            brms_prior = brms_prior + brms.prior_string(*p)
-        assert brms.is_brmsprior(brms_prior)
-    else:
-        brms_prior = []
+    # no executable passed -- compile model
+    if stan_exe_file is None:
+        formula = brms.bf(formula)
 
-    model_code = get_stan_code(
-        formula=formula,
-        data=data,
-        family=family,
-        priors=brms_prior,
-        sample_prior=sample_prior,
-    )
+        if len(priors)>0:
+            brms_prior = brms.prior_string(*priors[0])
+            for p in priors[1:]:
+                brms_prior = brms_prior + brms.prior_string(*p)
+            assert brms.is_brmsprior(brms_prior)
+        else:
+            brms_prior = []
+
+        model_code = get_stan_code(
+            formula=formula,
+            data=data,
+            family=family,
+            priors=brms_prior,
+            sample_prior=sample_prior,
+        )
+
+        fname = name if name is not None else 'model'
+        stan_file = f'{outdir}/{fname}.stan'
+        with open(os.path.abspath(stan_file), 'w') as f:
+            f.write(model_code)
+
+        kwargs = {'stan_file': stan_file}
+
+    # load precompiled executable
+    else:
+        with open(os.path.abspath(f'{stan_exe_file}.stan'), 'r') as f:
+            model_code = f.read()
+
+        name = name if name is not None else stan_exe_file
+        kwargs = {'exe_file': stan_exe_file, 'compile': False}
+
     model_data = _convert_R_to_python(formula, data, family)
     model_data = _coerce_types(model_code, model_data)
 
-    sm = pystan.StanModel(model_code=model_code)
-    if sample==False:
+    sm = cmdstanpy.CmdStanModel(model_name=name, **kwargs)
+    if not sample:
         return sm
     else:
-        fit = sm.sampling(data=model_data, **pystan_args)
+        fit = sm.sample(data=model_data, output_dir=outdir, **stan_args)
         return fit
