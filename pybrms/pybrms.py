@@ -94,13 +94,14 @@ def _coerce_types(stan_code, stan_data):
     var_dict = dict(zip(var_names, var_types))
 
     # coerce integers to int and 1-size arrays to scalars
-    for k,v in stan_data.items():
+    def coerce(k,v):
         if k in var_names and var_dict[k]=="int":
-            stan_data[k] = v.astype(int) # np.int32) # hmm, why did i change this ?
+            v = v.astype(int) # np.int32) # hmm, why did i change this ?
         if v.size==1:
-            stan_data[k], = v.ravel()
+            v, = v.ravel()
+        return v
 
-    return stan_data
+    return {k: coerce(k,v) for k,v in stan_data.items()}
 
 
 # Cell
