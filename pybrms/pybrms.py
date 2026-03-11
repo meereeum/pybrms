@@ -123,10 +123,16 @@ def fit(
     if stan_exe_file is None:
         formula = brms.bf(formula)
 
+        def convert_prior(p):
+            if brms.is_brmsprior(p):
+                return p
+            else:
+                return brms.prior_string(*p)
+
         if len(priors)>0:
-            brms_prior = brms.prior_string(*priors[0])
+            brms_prior = convert_prior(priors[0])
             for p in priors[1:]:
-                brms_prior = brms_prior + brms.prior_string(*p)
+                brms_prior = brms_prior + convert_prior(p)
             assert brms.is_brmsprior(brms_prior)
         else:
             brms_prior = []
